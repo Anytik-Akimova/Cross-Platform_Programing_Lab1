@@ -1,0 +1,343 @@
+import enum
+import math
+#from typing import Any
+#import json
+
+#try converting to int/float, return string otherwise
+def convert_to_number(str_element):
+    try:
+        return int(str_element)
+    except ValueError:
+        try:
+            return float(str_element)
+        except ValueError:
+            return str_element
+
+def parse_string(text):
+    # parse opcodes from text
+    # CODE <ARG>  -> (OP_CODE, (ARG,))
+    # \n -> skip
+    code = {}
+    instructions = []
+    #labels = {}
+    #label_i = 0
+
+    #split into lines
+    lines = text.split('\n')
+    lines = [line for line in lines if line.strip() != '']
+
+    #now parse each line
+    for line in lines:
+        #label_i += 1
+
+        #get line elements
+        elements = []
+        element = ''
+        q_fl = False #check for quotes (for string identification)
+
+        for char in line:
+            if char in ("'", '"'):
+                q_fl = not q_fl
+                continue
+            if char == ' ' and (not q_fl):
+                if element:
+                    elements.append(convert_to_number(element))
+                    element = ''
+            else:
+                element += char
+        if element:
+            elements.append(convert_to_number(element))
+    
+        #check if first element is an opcode (and valid one)
+        assert elements[0] in OpCode.__members__, f"Invalid OpCode input: {elements[0]}"
+        #record opcode and save everything else as arguments
+        assert len(elements) <=3, f"Too many arguments (max: 2). Got: {len(elements)-1}"
+        '''
+        if elements[0] == OpCode.LABEL.name:
+            assert len(elements) == 2, f"LABEL must have one argument. Got: {len(elements)-1}"
+            labels[elements[1]] = label_i
+        '''
+        if len(elements[1:]) != 0:
+            instructions.append(Op(OpCode[elements[0]], *elements[1:]))
+        else:
+            instructions.append(Op(OpCode[elements[0]]))
+
+
+    '''
+    #return code: instr, labels
+    code['$entrypoint$'] = {
+            'instructions': instructions, 
+            'labels': labels
+            }
+    '''
+    return instructions
+
+#raw opcodes representation
+class OpCode(enum.Enum):
+    #memory
+    LOAD_CONST=1
+    #STORE_CONST=2
+    LOAD_VAR=2
+    STORE_VAR=3
+    #binary
+    ADD=4
+    SUB=5
+    MUL=6
+    DIV=7
+    #unary
+    SQRT=8
+    NEG=9
+    EXP=10
+    #comp
+    EQ=11
+    NEQ=12
+    GT=13
+    LT=14
+    GE=15 
+    LE=16 
+    #labels and jumps
+    LABEL=17
+    JMP=18
+    CJMP=19
+    #i/o
+    PRINT=20
+    INPUT_STRING=21
+    INPUT_NUMBER=22
+    #functions
+
+#operations: opcode + arguments
+class Op:
+    def __init__(self, opcode: OpCode, *args):
+        self.opcode = opcode
+        self.args = args
+    
+    def __str__(self):
+        args_str = ", ".join(repr(a) for a in self.args)
+        return f"Op({str(self.opcode)}, {args_str})"
+
+    def __repr__(self):
+        return self.__str__()
+
+    def text(self):
+        args_str = " ".join(str(a) for a in self.args)
+        if args_str:
+            return f"{str(self.opcode.name)} {args_str}"
+        else:
+            return f"{str(self.opcode.name)}"
+
+#the virtual machine
+class VM():
+    def __init__(self, input_fn=input, print_fn=print):
+        self.stack = []
+        self.variables = dict()
+        self.input_fn = input_fn 
+        self.print_fn = print_fn
+        self.ip = 0 #'instruction pointer'
+
+    #operations + parsing
+    def run_op(self, op: Op):
+        #print(op)
+        match op.opcode:
+            #memory
+            case OpCode.LOAD_CONST:
+                assert len(op.args) == 1, f"LOAD_CONST takes one argument. Got: {op.args}"
+                val = op.args[0]
+                self.stack.append(val)
+            case OpCode.LOAD_VAR:
+                assert len(op.args) == 1, f"LOAD_VAR takes one arguments. Got: {op.args}"
+                var_name = op.args[0]
+                assert var_name in self.variables, f"Variable {var_name!r} not defined."
+                value = self.variables[var_name]
+                self.stack.append(value)
+            case OpCode.STORE_VAR:
+                assert len(op.args) == 1, f"STORE_VAR takes one arguments. Got: {op.args}"
+                var_name = op.args[0]
+                value = self.stack.pop()
+                self.variables[var_name] = value
+
+            #binary
+            case OpCode.ADD:
+                assert len(op.args) == 0, f"ADD takes no arguments. Got: {op.args}"
+                arg1 = self.stack.pop()
+                arg2 = self.stack.pop()
+                assert type(arg1) == type(arg2) and isinstance(arg1, (int, float)),  f"Operands must be same type and either int or float. Got: {type(arg1).__name__} and {type(arg2).__name__}"
+                self.stack.append(arg1 + arg2)
+            case OpCode.SUB:
+                assert len(op.args) == 0, f"SUB takes no arguments. Got: {op.args}"
+                arg1 = self.stack.pop()
+                arg2 = self.stack.pop()
+                assert type(arg1) == type(arg2) and isinstance(arg1, (int, float)),  f"Operands must be same type and either int or float. Got: {type(arg1).__name__} and {type(arg2).__name__}"
+                self.stack.append(arg1 - arg2)
+            case OpCode.MUL:
+                assert len(op.args) == 0, f"MUL takes no arguments. Got: {op.args}"
+                arg1 = self.stack.pop()
+                arg2 = self.stack.pop()
+                assert type(arg1) == type(arg2) and isinstance(arg1, (int, float)),  f"Operands must be same type and either int or float. Got: {type(arg1).__name__} and {type(arg2).__name__}"
+                self.stack.append(arg1 * arg2)
+            case OpCode.DIV:
+                assert len(op.args) == 0, f"DIV takes no arguments. Got: {op.args}"
+                arg1 = self.stack.pop()
+                arg2 = self.stack.pop()
+                assert type(arg1) == type(arg2) and isinstance(arg1, (int, float)),  f"Operands must be same type and either int or float. Got: {type(arg1).__name__} and {type(arg2).__name__}"
+                if isinstance(arg1, int):
+                    self.stack.append(arg1 // arg2)
+                else:
+                    self.stack.append(arg1 / arg2)
+
+            #unary
+            case OpCode.SQRT:
+                assert len(op.args) == 0, f"SQRT takes no arguments. Got: {op.args}"
+                arg = self.stack.pop()
+                assert isinstance(arg, (int, float)),  f"Operand must be either int or float. Got: {type(arg).__name__}"
+                self.stack.append(math.sqrt(arg))
+            case OpCode.NEG:
+                assert len(op.args) == 0, f"NEG takes no arguments. Got: {op.args}"
+                arg = self.stack.pop()
+                assert isinstance(arg, (int, float)),  f"Operand must be either int or float. Got: {type(arg).__name__}"
+                self.stack.append(-arg)
+            case OpCode.EXP:
+                assert len(op.args) == 0, f"EXP takes no arguments. Got: {op.args}"
+                arg = self.stack.pop()
+                assert isinstance(arg, (int, float)),  f"Operand must be either int or float. Got: {type(arg).__name__}"
+                self.stack.append(math.exp(arg))
+            
+            #i/o
+            case OpCode.PRINT:
+                assert len(op.args) == 0, f"PRINT takes no arguments. Got: {op.args}"
+                arg = self.stack.pop()
+                self.print_fn(arg)
+            case OpCode.INPUT_STRING:
+                assert len(op.args) == 0, f"INPUT_STRING takes no arguments. Got: {op.args}"
+                arg = self.input_fn('krya')
+                assert isinstance(arg, str),  f"Operand must be str. Got: {type(arg).__name__}"
+                self.stack.append(arg)
+            case OpCode.INPUT_NUMBER:
+                assert len(op.args) == 0, f"INPUT_NUMBER takes no arguments. Got: {op.args}"
+                arg = self.input_fn('krya')
+                assert isinstance(arg, (int, float)),  f"Operand must be float/int. Got: {type(arg).__name__}"
+                self.stack.append(arg)
+
+            #comp
+            case OpCode.EQ:
+                assert len(op.args) == 0, f"EQ takes no arguments. Got: {op.args}"
+                arg1 = self.stack.pop()
+                arg2 = self.stack.pop()
+                assert type(arg1) == type(arg2) and isinstance(arg1, (int, float)),  f"Operands must be same type and either int or float. Got: {type(arg1).__name__} and {type(arg2).__name__}"
+                if arg1 == arg2:
+                    self.stack.append(1)
+                else:
+                    self.stack.append(0)
+            case OpCode.NEQ:
+                assert len(op.args) == 0, f"NEQ takes no arguments. Got: {op.args}"
+                arg1 = self.stack.pop()
+                arg2 = self.stack.pop()
+                assert type(arg1) == type(arg2) and isinstance(arg1, (int, float)),  f"Operands must be same type and either int or float. Got: {type(arg1).__name__} and {type(arg2).__name__}"
+                if arg1 != arg2:
+                    self.stack.append(1)
+                else:
+                    self.stack.append(0)
+            case OpCode.GT:
+                assert len(op.args) == 0, f"GT takes no arguments. Got: {op.args}"
+                arg1 = self.stack.pop()
+                arg2 = self.stack.pop()
+                assert type(arg1) == type(arg2) and isinstance(arg1, (int, float)),  f"Operands must be same type and either int or float. Got: {type(arg1).__name__} and {type(arg2).__name__}"
+                if arg1 > arg2:
+                    self.stack.append(1)
+                else:
+                    self.stack.append(0)
+            case OpCode.LT:
+                assert len(op.args) == 0, f"LT takes no arguments. Got: {op.args}"
+                arg1 = self.stack.pop()
+                arg2 = self.stack.pop()
+                assert type(arg1) == type(arg2) and isinstance(arg1, (int, float)),  f"Operands must be same type and either int or float. Got: {type(arg1).__name__} and {type(arg2).__name__}"
+                if arg1 < arg2:
+                    self.stack.append(1)
+                else:
+                    self.stack.append(0)
+            case OpCode.GE:
+                assert len(op.args) == 0, f"GE takes no arguments. Got: {op.args}"
+                arg1 = self.stack.pop()
+                arg2 = self.stack.pop()
+                assert type(arg1) == type(arg2) and isinstance(arg1, (int, float)),  f"Operands must be same type and either int or float. Got: {type(arg1).__name__} and {type(arg2).__name__}"
+                if arg1 >= arg2:
+                    self.stack.append(1)
+                else:
+                    self.stack.append(0)
+            case OpCode.LE:
+                assert len(op.args) == 0, f"LE takes no arguments. Got: {op.args}"
+                arg1 = self.stack.pop()
+                arg2 = self.stack.pop()
+                assert type(arg1) == type(arg2) and isinstance(arg1, (int, float)),  f"Operands must be same type and either int or float. Got: {type(arg1).__name__} and {type(arg2).__name__}"
+                if arg1 <= arg2:
+                    self.stack.append(1)
+                else:
+                    self.stack.append(0)
+            case _:
+                raise NotImplementedError(f"Unknown op: {str(op)}")
+
+    def run_code(self, code: list[Op]):
+        while self.ip < len(code): 
+            self.run_op(code[self.ip])
+            #self.run_op(code['$entrypoint$']['instructions'][self.ip])
+            self.ip += 1
+        return self.stack, self.variables
+    
+    def run_code_from_json(json_path: str):
+        pass
+    
+    #stack
+    def dump_stack(pkl_path: str):
+        pass
+
+    def load_stack(pkl_path: str):
+        pass
+
+    #memory
+    def dump_memory(pkl_path: str):
+        pass
+
+    def load_memory(pkl_path: str):
+        pass
+
+'''
+            #labels, jumps
+            case OpCode.CJMP:
+                assert len(op.args) == 1, f"CJMP takes one argument. Got: {op.args}"
+                val = op.args[0]
+                fl = self.stack.pop()
+                if fl == 1:
+                    self.ip = code[labels][val]
+                else:
+                    pass
+            case OpCode.JMP:
+                assert len(op.args) == 1, f"JMP takes one argument. Got: {op.args}"
+                val = op.args[0]
+                self.ip = labels[val]
+'''
+
+'''
+
+class VM:
+#    def __init__(self):
+#
+
+    def run_code(code: list):
+        pass
+
+    def run_code_from_json(json_path: str):
+        pass
+
+
+    def dump_stack(pkl_path: str):
+        pass
+
+    def load_stack(pkl_path: str):
+        pass
+
+
+    def dump_memory(pkl_path: str):
+        pass
+
+    def load_memory(pkl_path: str):
+        pass
+'''

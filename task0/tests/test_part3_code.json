@@ -1,0 +1,11 @@
+{
+    "$entrypoint$": [
+        {
+            "op": "LOAD_CONST",
+            "arg": "Hello, World!"
+        },
+        {
+            "op": "PRINT"
+        }
+    ]
+}

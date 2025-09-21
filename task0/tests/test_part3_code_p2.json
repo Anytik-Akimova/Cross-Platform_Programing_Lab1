@@ -1,0 +1,11 @@
+{
+    "$entrypoint$": [
+        {
+            "op": "LOAD_VAR",
+            "arg": "S"
+        },
+        {
+            "op": "PRINT"
+        }
+    ]
+}

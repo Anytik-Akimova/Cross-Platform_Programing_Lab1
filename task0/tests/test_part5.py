@@ -42,7 +42,7 @@ STORE_VAR "sign"
 JMP after_else
 
 LABEL else_body
-LOAD_CONST "=="
+LOAD_CONST "!="
 STORE_VAR "sign"
 LABEL after_else
 

@@ -8,7 +8,7 @@ def convert_to_number(str_element):
     try:
         return int(str_element)
     except ValueError:
-        try:
+        try: 
             return float(str_element)
         except ValueError:
             return str_element
@@ -19,8 +19,8 @@ def parse_string(text):
     # \n -> skip
     code = {}
     instructions = []
-    #labels = {}
-    #label_i = 0
+    labels = {}
+    label_i = 0
 
     #split into lines
     lines = text.split('\n')
@@ -28,7 +28,6 @@ def parse_string(text):
 
     #now parse each line
     for line in lines:
-        #label_i += 1
 
         #get line elements
         elements = []
@@ -52,25 +51,36 @@ def parse_string(text):
         assert elements[0] in OpCode.__members__, f"Invalid OpCode input: {elements[0]}"
         #record opcode and save everything else as arguments
         assert len(elements) <=3, f"Too many arguments (max: 2). Got: {len(elements)-1}"
-        '''
+
+        #check for labels, remember their instuction position
         if elements[0] == OpCode.LABEL.name:
             assert len(elements) == 2, f"LABEL must have one argument. Got: {len(elements)-1}"
+            assert isinstance(elements[1], str), f"LABEL takes str as input. Got: {type(elements[1]).__name__}"
             labels[elements[1]] = label_i
-        '''
+            #omit "LABEL <name>" in parsed code. Index = the position of instruction to be executed next
+            #label_i += 1
+            continue
+        
+        #replace <label_name> for instruction index
+
+
+        #check if instr has no args
         if len(elements[1:]) != 0:
             instructions.append(Op(OpCode[elements[0]], *elements[1:]))
         else:
             instructions.append(Op(OpCode[elements[0]]))
 
+        label_i += 1
 
-    '''
     #return code: instr, labels
     code['$entrypoint$'] = {
             'instructions': instructions, 
             'labels': labels
             }
-    '''
-    return instructions
+    
+    print(code)
+    return code
+    #return instructions, labels
 
 #raw opcodes representation
 class OpCode(enum.Enum):
@@ -135,7 +145,7 @@ class VM():
         self.ip = 0 #'instruction pointer'
 
     #operations + parsing
-    def run_op(self, op: Op):
+    def run_op(self, op: Op, labels):
         #print(op)
         match op.opcode:
             #memory
@@ -272,13 +282,30 @@ class VM():
                     self.stack.append(1)
                 else:
                     self.stack.append(0)
+
+            #labels, jumps
+            case OpCode.CJMP:
+                assert len(op.args) == 1, f"CJMP takes one argument. Got: {op.args}"
+                val = op.args[0]
+                assert isinstance(val, str), f"CJMP takes str as input. Got: {type(val).__name__}"
+                fl = self.stack.pop()
+                if fl == 1:
+                    self.ip = labels[val] - 1
+                else:
+                    pass
+            case OpCode.JMP:
+                assert len(op.args) == 1, f"JMP takes one argument. Got: {op.args}"
+                val = op.args[0]
+                assert isinstance(val, str), f"JMP takes str as input. Got: {type(val).__name__}"
+                self.ip = labels[val] - 1
+
             case _:
                 raise NotImplementedError(f"Unknown op: {str(op)}")
 
     def run_code(self, code: list[Op]):
-        while self.ip < len(code): 
-            self.run_op(code[self.ip])
-            #self.run_op(code['$entrypoint$']['instructions'][self.ip])
+        while self.ip < len(code['$entrypoint$']['instructions']): 
+            #self.run_op(code[self.ip])
+            self.run_op(code['$entrypoint$']['instructions'][self.ip], code['$entrypoint$']['labels'])
             self.ip += 1
         return self.stack, self.variables
     

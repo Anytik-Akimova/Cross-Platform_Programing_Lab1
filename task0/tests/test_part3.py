@@ -19,7 +19,7 @@ class MyIO:
 
 
 def test1():
-    JSON_FULL_PATH = DIR / "test_part5_code.json"
+    JSON_FULL_PATH = DIR / "test_part3_code.json"
     io = MyIO([])
     vm = VM(print_fn=io.print_fn, input_fn=io.input_fn)
     vm.run_code_from_json(str(JSON_FULL_PATH))
@@ -27,8 +27,8 @@ def test1():
 
 
 def test2():
-    JSON_1_PATH = DIR / "test_part5_code_p1.json"
-    JSON_2_PATH = DIR / "test_part5_code_p2.json"
+    JSON_1_PATH = DIR / "test_part3_code_p1.json"
+    JSON_2_PATH = DIR / "test_part3_code_p2.json"
 
     io = MyIO([])
     vm = VM(print_fn=io.print_fn, input_fn=io.input_fn)

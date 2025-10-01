@@ -310,16 +310,23 @@ class VM():
         return self.stack, self.variables
     
     def run_code_from_json(self, json_path: str):
-        code = json.loads(json_path)["$entrypoint$"]
+        #open file
+        with open(json_path, 'r') as j:
+            code = json.loads(j.read())["$entrypoint$"]
 
+        #"parse" it to get our target format (because we use labels)
+        #!!! maybe realise this parsing later
+
+        #print(code, len(code))
         while self.ip < len(code):
-            opc = code["op"]
-            args = code.get("arg")   
+            opc = code[self.ip]["op"]
+            args = code[self.ip].get("arg")   
             assert opc in OpCode.__members__, f"Invalid OpCode input: {opc}"
             if args == None:
-                self.run_op(Op(OpCode[opc]))
+                self.run_op(Op(OpCode[opc]), [])
             else:
-                self.run_op(Op(OpCode[opc], args))
+                self.run_op(Op(OpCode[opc], args), [])
+            self.ip += 1
     
     #stack
     def dump_stack(self, pkl_path: str):

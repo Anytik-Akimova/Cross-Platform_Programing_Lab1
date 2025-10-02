@@ -13,6 +13,7 @@ def convert_to_number(str_element):
         except ValueError:
             return str_element
 
+#parser
 def parse_string(text):
     # parse opcodes from text
     # CODE <ARG>  -> (OP_CODE, (ARG,))
@@ -73,7 +74,7 @@ def parse_string(text):
         label_i += 1
 
     #return code: instr, labels
-    code['$entrypoint$'] = {
+    code = {
             'instructions': instructions, 
             'labels': labels
             }
@@ -114,6 +115,8 @@ class OpCode(enum.Enum):
     INPUT_STRING=21
     INPUT_NUMBER=22
     #functions
+    CALL=23
+    RET=24
 
 #operations: opcode + arguments
 class Op:
@@ -138,15 +141,30 @@ class Op:
 #the virtual machine
 class VM():
     def __init__(self, input_fn=input, print_fn=print):
+        #stack - list
         self.stack = []
+        #variables - dict
         self.variables = dict()
+        #frames - list 
+        self.frames = []
+
+        #i/o
         self.input_fn = input_fn 
         self.print_fn = print_fn
-        self.ip = 0 #'instruction pointer'
+
+        #'instruction pointer' and
+        #list of saved pointers (like ebp, esp handling) + func names
+        #e.g. [{'main': 5}, {'foo': 1}, ...]
+        self.ip = 0
+        self.saved_ips = []
+
+        #current function indicator
+        self.current_frame = '$entrypoint$'
 
     #operations + parsing
     def run_op(self, op: Op, labels):
         #print(op)
+        #print(self.stack, self.frames, self.variables, self.saved_ips)
         match op.opcode:
             #memory
             case OpCode.LOAD_CONST:
@@ -299,13 +317,45 @@ class VM():
                 assert isinstance(val, str), f"JMP takes str as input. Got: {type(val).__name__}"
                 self.ip = labels[val] - 1
 
+            #function handling
+            case OpCode.CALL:
+                assert len(op.args) == 0, f"CALL takes no arguments. Got: {op.args}"
+                
+                #first, pop current func name
+                func = self.stack.pop()
+
+                #next, save frame pointer and previous func name
+                self.saved_ips.append([self.current_frame, self.ip])
+                self.current_frame = func
+
+                #separate variable frames 
+                self.frames.append(self.variables) #save old frame
+                self.variables = dict() #create new frame
+
+                #finally, reset instruction pointer
+                self.ip = -1
+
+            case OpCode.RET:
+                assert len(op.args) == 0, f"RET takes no arguments. Got: {op.args}"
+
+                #restore old instruction pointer and function indicator
+                #just go one element back and clear saved info
+                saved_info = self.saved_ips.pop()
+                self.current_frame = saved_info[0]
+                self.ip = saved_info[1]
+                del saved_info
+
+                #return to frame, clear info
+                self.variables = self.frames.pop()
+
             case _:
                 raise NotImplementedError(f"Unknown op: {str(op)}")
 
-    def run_code(self, code: list[Op]):
-        while self.ip < len(code['$entrypoint$']['instructions']): 
+    def run_code(self, code):
+
+        while self.ip < len(code[self.current_frame]['instructions']): 
             #self.run_op(code[self.ip])
-            self.run_op(code['$entrypoint$']['instructions'][self.ip], code['$entrypoint$']['labels'])
+            self.run_op(code[self.current_frame]['instructions'][self.ip], code[self.current_frame]['labels'])
             self.ip += 1
         return self.stack, self.variables
     

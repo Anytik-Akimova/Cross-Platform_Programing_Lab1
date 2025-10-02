@@ -36,7 +36,8 @@ def parse_string(text):
         q_fl = False #check for quotes (for string identification)
 
         for char in line:
-            if char in ("'", '"'):
+            #if char in ("'", '"'):
+            if char == '"':
                 q_fl = not q_fl
                 continue
             if char == ' ' and (not q_fl):
@@ -79,7 +80,7 @@ def parse_string(text):
             'labels': labels
             }
     
-    print(code)
+    #print(code)
     return code
     #return instructions, labels
 

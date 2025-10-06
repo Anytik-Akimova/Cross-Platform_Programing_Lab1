@@ -1,3 +1,7 @@
+import ast
+import inspect
+import textwrap
+
 #############################################
 #############################################
 # YOUR CODE BELOW
@@ -6,8 +10,35 @@
 # Implement `has_recursion`.
 
 def has_recursion(func):
-    print(func.__name__)
-    return True
+    #get function source code
+    source = inspect.getsource(func)
+    #remove irrelevant inddentation from nesting
+    source = textwrap.dedent(source) 
+
+    #create ast 
+    tree = ast.parse(source)
+    print(ast.dump(tree))
+
+    func_name = func.__name__
+    aliases = {func_name}  # track names that refer to the function
+
+    # First pass: find aliases like `alias = func_name`
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            if isinstance(node.value, ast.Name) and node.value.id == func_name:
+                # handle `a = func_name`
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        aliases.add(target.id)
+
+    # Second pass: find any calls to aliases
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            if node.func.id in aliases:
+                return True  # recursion found
+
+    return False
+    #print(func.__name__)
 
 #############################################
 
@@ -33,6 +64,7 @@ def test_simple():
             return (x * factorial(x-1))
 
     assert has_recursion(factorial)
+    print("test_simple passed")
 
 
 def test_coupled():
@@ -50,6 +82,7 @@ def test_coupled():
     assert has_recursion(func1)
     assert has_recursion(func2)
     assert not has_recursion(func3)
+    print("test_coupled passed")
 
 
 def test_big():
@@ -93,7 +126,7 @@ def test_big():
     assert not has_recursion(func6)
     assert has_recursion(func3)
     assert has_recursion(func4)
-
+    print("test_big passed")
 
 # Unnecessary test for extra points!
 def test_alias():
@@ -108,3 +141,9 @@ def test_alias():
     
     assert has_recursion(func1)
     assert not has_recursion(func2)
+    print("test_alias passed")
+
+test_simple()
+test_coupled()
+test_big()
+test_alias()

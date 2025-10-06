@@ -66,7 +66,7 @@ class MyIO:
 #div will automatically throw an error
 #div also acts as a type checker here  
 
-#0 doesn't get checked
+#0 does get checked
 POW = """\
 STORE_VAR "x"
 STORE_VAR "n"

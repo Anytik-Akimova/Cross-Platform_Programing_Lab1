@@ -55,7 +55,10 @@ PRINT
 """
 
 def test1():
-    code = parse_string(TEST1)
+    code_entry = parse_string(TEST1)
+    code = {
+        "$entrypoint$": code_entry
+    }
     # 3 != 3
     inp = [3, 5]
     io = MyIO(inp)
@@ -111,7 +114,10 @@ PRINT
 """
 
 def test2():
-    code = parse_string(TEST2)
+    code_entry = parse_string(TEST2)
+    code = {
+        "$entrypoint$": code_entry
+    }
     # sum(1..100)
     inp = [100]
     io = MyIO(inp)

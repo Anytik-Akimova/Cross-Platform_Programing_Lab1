@@ -15,7 +15,10 @@ ADD
 """
 
 def test1():
-    code = parse_string(TEST1)
+    code_entry = parse_string(TEST1)
+    code = {
+        "$entrypoint$": code_entry
+    }
     vm = VM()
     stack, variables = vm.run_code(code)
     assert len(stack) == 1
@@ -35,7 +38,10 @@ MUL
 """
 
 def test2():
-    code = parse_string(TEST2)
+    code_entry = parse_string(TEST2)
+    code = {
+        "$entrypoint$": code_entry
+    }
     vm = VM()
     stack, variables = vm.run_code(code)
     assert len(stack) == 1
@@ -61,7 +67,10 @@ STORE_VAR "result"
 """
 
 def test3():
-    code = parse_string(TEST3)
+    code_entry = parse_string(TEST3)
+    code = {
+        "$entrypoint$": code_entry
+    }
     vm = VM()
     stack, variables = vm.run_code(code)
     assert "a" in variables

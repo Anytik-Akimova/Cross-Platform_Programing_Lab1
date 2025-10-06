@@ -118,6 +118,8 @@ class OpCode(enum.Enum):
     #functions
     CALL=23
     RET=24
+    #breakpoint
+    BREAKPOINT=25
 
 #operations: opcode + arguments
 class Op:
@@ -348,6 +350,10 @@ class VM():
 
                 #return to frame, clear info
                 self.variables = self.frames.pop()
+
+            #breakpoint (dummy op)
+            case OpCode.BREAKPOINT:
+                assert len(op.args) == 0, f"BREAKPOINT takes no arguments. Got: {op.args}"
 
             case _:
                 raise NotImplementedError(f"Unknown op: {str(op)}")

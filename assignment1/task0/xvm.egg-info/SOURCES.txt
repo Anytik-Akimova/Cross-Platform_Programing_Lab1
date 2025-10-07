@@ -1,0 +1,15 @@
+pyproject.toml
+tests/test_part1.py
+tests/test_part2.py
+tests/test_part3.py
+tests/test_part5.py
+tests/test_part6.py
+xvm/__init__.py
+xvm/our_program.py
+xvm/run.py
+xvm/vm.py
+xvm.egg-info/PKG-INFO
+xvm.egg-info/SOURCES.txt
+xvm.egg-info/dependency_links.txt
+xvm.egg-info/entry_points.txt
+xvm.egg-info/top_level.txt

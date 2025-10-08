@@ -4,6 +4,7 @@ STORE_VAR "x"
 STORE_VAR "n"
 
 LOAD_CONST 0
+BREAKPOINT
 LOAD_VAR "n"
 EQ
 CJMP "Power 0"
@@ -65,8 +66,13 @@ LOAD_CONST "This func can't take power of 0."
 RET
 
 function "$entrypoint$"
-LOAD_CONST 4
-LOAD_CONST 2.8
+INPUT_NUMBER
+STORE_VAR "x"
+INPUT_NUMBER
+STORE_VAR "n"
+
+LOAD_VAR "n"
+LOAD_VAR "x"
 
 LOAD_CONST "pow"
 CALL

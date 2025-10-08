@@ -1,12 +1,68 @@
+import copy
 from pathlib import Path
 from xvm.vm import VM, parse_string, OpCode, Op, convert_to_number
+
+#cant forget IO
+class MyIO:
+    def __init__(self, in_buffer):
+        self.in_buffer = copy.deepcopy(in_buffer)
+        self.out_buffer = []
+    
+    def print_fn(self, obj):
+        print(obj)
+        self.out_buffer.append(obj)
+
+    def input_fn(self):
+        a = self.in_buffer.pop(0)
+        return a
+    
+def from_stdin_number():
+    inputs = input().split()
+    numbers = []
+
+    for s in inputs:
+        try:
+            numbers.append(int(s))
+        except ValueError:
+            numbers.append(float(s))
+
+    return numbers
+
+#parser helper
+def parse_text(text):
+
+    functions = {}
+    pos = 0
+
+    while True:
+        #find start of func definition
+        start_func = text.find('function "', pos)
+        if start_func == -1:
+            break
+
+        #find start and end of func name
+        start_quote = start_func + len('function "')
+        end_quote = text.find('"', start_quote)
+        func_name = text[start_quote:end_quote]
+
+        #find start of next func
+        next_func = text.find('function "', end_quote)
+        if next_func == -1:
+            func_code = text[end_quote+1:].strip()
+        else:
+            func_code = text[end_quote+1:next_func].strip()
+
+        functions[func_name] = func_code
+        pos = next_func
+
+    return functions
 
 #debugger
 def xvm_debug():
     vm = VM()
     code = dict()   
 
-    print("XVM Debugger (minimal). Type 'info' or 'exit'.")
+    print("XVM Debugger. Type 'info' or 'exit'.")
 
     while True:
         try:
@@ -47,7 +103,6 @@ def xvm_debug():
 
         #load
         elif cmd == "load":
-            # Якщо немає аргумента 
             if not arg:
                 print("Usage: load <path>")
                 continue
@@ -73,8 +128,7 @@ def xvm_debug():
 
             code = dict()
             for func in parsed_text:
-                func_text = "\n".join(parsed_text[func])
-                func_code = parse_string(func_text)
+                func_code = parse_string(parsed_text[func])
                 code[func] = func_code
 
             #reset VM state
@@ -89,7 +143,27 @@ def xvm_debug():
         #run
         elif cmd == "run":
             try:
-                vm.run_code(code)
+                while vm.ip < len(code[vm.current_frame]['instructions']): 
+            
+                    #vm.run_code(code)
+                    op = code[vm.current_frame]['instructions'][vm.ip]
+
+                    #handle input ops 
+                    if op.opcode == OpCode.INPUT_NUMBER:
+                        print("Input for INPUT_NUMBER (one arg): ")
+                        inp = from_stdin_number()
+                        io = MyIO(inp)
+                        vm.input_fn = io.input_fn
+                        vm.print_fn = io.print_fn
+                    elif op.opcode == OpCode.INPUT_STRING:
+                        print("Input for INPUT_STRING (one arg): ")
+                        inp = input()
+                        io = MyIO(inp)
+                        vm.input_fn = io.input_fn
+                        vm.print_fn = io.print_fn
+
+                    vm.run_op(op, code[vm.current_frame]['labels'])
+                    vm.ip += 1
             except StopIteration:
                 print(f"Stopped at instruction {vm.ip} (BREAKPOINT)")
                 vm.ip += 1 
@@ -115,6 +189,22 @@ def xvm_debug():
 
             else:
                 print(f"{vm.ip:04d}: {repr(op)}")
+
+                #handle input ops 
+                if op.opcode == OpCode.INPUT_NUMBER:
+                    print("Input for INPUT_NUMBER (one arg): ")
+                    inp = from_stdin_number()
+                    io = MyIO(inp)
+                    vm.input_fn = io.input_fn
+                    vm.print_fn = io.print_fn
+                elif op.opcode == OpCode.INPUT_STRING:
+                    print("Input for INPUT_STRING (one arg): ")
+                    inp = input()
+                    io = MyIO(inp)
+                    vm.input_fn = io.input_fn
+                    vm.print_fn = io.print_fn
+
+                #try executing
                 try:
                     vm.run_op(op, code[vm.current_frame]['labels'])
                 #dont change ip if exception
@@ -146,6 +236,22 @@ def xvm_debug():
 
                 else:
                     print(f"{vm.ip:04d}: {repr(op)}")
+
+                    #handle input ops 
+                    if op.opcode == OpCode.INPUT_NUMBER:
+                        print("Input for INPUT_NUMBER (one arg): ")
+                        inp = from_stdin_number()
+                        io = MyIO(inp)
+                        vm.input_fn = io.input_fn
+                        vm.print_fn = io.print_fn
+                    elif op.opcode == OpCode.INPUT_STRING:
+                        print("Input for INPUT_STRING (one arg): ")
+                        inp = input()
+                        io = MyIO(inp)
+                        vm.input_fn = io.input_fn
+                        vm.print_fn = io.print_fn
+
+                    #try executing
                     try:
                         vm.run_op(op, code[vm.current_frame]['labels'])
                     #dont change ip if exception
@@ -175,6 +281,22 @@ def xvm_debug():
                 try:
                     while vm.ip < len(code[vm.current_frame]['instructions']): 
                         op = code[vm.current_frame]['instructions'][vm.ip]
+
+                        #handle input ops 
+                        if op.opcode == OpCode.INPUT_NUMBER:
+                            print("Input for INPUT_NUMBER (one arg): ")
+                            inp = from_stdin_number()
+                            io = MyIO(inp)
+                            vm.input_fn = io.input_fn
+                            vm.print_fn = io.print_fn
+                            print(inp)
+                        elif op.opcode == OpCode.INPUT_STRING:
+                            print("Input for INPUT_STRING (one arg): ")
+                            inp = input()
+                            io = MyIO(inp)
+                            vm.input_fn = io.input_fn
+                            vm.print_fn = io.print_fn
+
                         #count number of calls and rets
                         if op.opcode == OpCode.CALL:
                             num_calls += 1
@@ -226,7 +348,42 @@ def xvm_debug():
         
         #stack (n)
         elif cmd == "stack":
-            print(vm.show_stack(arg))
+
+            if not vm.stack:
+                print("Stack: []")
+                continue
+
+            #to show stack in LIFO format
+            list_stack = list(reversed(vm.stack))
+
+            #if no args, print entire stack
+            if arg is None or arg == "":
+                print("Stack (top is [0]):")
+                for i, v in enumerate(list_stack):
+                    print(f"[{i}] {repr(v)}")
+                continue
+
+            #check if multiple
+            parts = str(arg).split()
+            try:
+                if(len(parts) == 1):
+                    last = int(parts[0])
+                    if last < 0 or last > len(list_stack):
+                        print(f"Index out of range (0..{len(list_stack)})")
+                        continue
+                
+                    slice_ = list_stack[0:last]
+                    if not slice_:
+                        print("There are no elements")
+                        continue
+                    print("Stack slice (top is [0]):")
+                    for i, v in enumerate(slice_, start=0):
+                        print(f"[{i}] {repr(v)}")               
+                else:
+                    print("Incorrect input. Usage: stack [N]")
+            except ValueError:
+                    print("Arguments must be numbers!")
+            
             continue
 
         #memory
@@ -278,7 +435,6 @@ def xvm_debug():
             except Exception as e:
                 print(f"Execution failed: {e}")
             continue
-
         
         #frame
         elif cmd == "frame":
@@ -298,46 +454,6 @@ def xvm_debug():
                 print(f"  {k} = {repr(v)}")
             continue
 
-
         else:
-            # Невідома команда
             print(f"Unknown command: {cmd}. Type 'info'.")
-
-def parse_text(text):
-    functions = {}
-    current_name = None
-    current_ops = []
-
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-
-        if line.startswith("function "):
-            #exctract func name between first and last quote instance
-            start = line.find('"')
-            end = line.rfind('"')
-            if start != -1 and end != -1 and end > start:
-                #if we were exctracting function before
-                #write its operations and stop extracting
-                if current_name:
-                    functions[current_name] = current_ops
-                #get new function
-                current_name = line[start + 1:end]
-                current_ops = []
-            else:
-                raise Exception("Code is formatted incorrectly")
-        else:
-        #get insrtructions
-            if current_name:
-                current_ops.append(line)
-
-    #write last function (stop collecting ops, write to our dict)
-    if current_name: 
-        functions[current_name] = current_ops
-
-    return functions      
-    
-
-
 

@@ -13,7 +13,7 @@ class MyIO:
         print(obj)
         self.out_buffer.append(obj)
 
-    def input_fn(self, obj):
+    def input_fn(self):
         a = self.in_buffer.pop(0)
         return a
 

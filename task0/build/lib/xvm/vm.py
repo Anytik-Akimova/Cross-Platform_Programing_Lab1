@@ -239,12 +239,12 @@ class VM():
                 self.print_fn(arg)
             case OpCode.INPUT_STRING:
                 assert len(op.args) == 0, f"INPUT_STRING takes no arguments. Got: {op.args}"
-                arg = self.input_fn()
+                arg = self.input_fn('krya')
                 assert isinstance(arg, str),  f"Operand must be str. Got: {type(arg).__name__}"
                 self.stack.append(arg)
             case OpCode.INPUT_NUMBER:
                 assert len(op.args) == 0, f"INPUT_NUMBER takes no arguments. Got: {op.args}"
-                arg = self.input_fn()
+                arg = self.input_fn('krya')
                 assert isinstance(arg, (int, float)),  f"Operand must be float/int. Got: {type(arg).__name__}"
                 self.stack.append(arg)
 
@@ -354,6 +354,7 @@ class VM():
             #breakpoint (dummy op)
             case OpCode.BREAKPOINT:
                 assert len(op.args) == 0, f"BREAKPOINT takes no arguments. Got: {op.args}"
+                print("[Breakpoint reached]")
                 raise StopIteration("Breakpoint hit")
 
             case _:
@@ -446,3 +447,46 @@ class VM():
                 print("Incorrect input. Usage: stack [N]")
         except ValueError:
             print("Arguments must be numbers!")
+
+'''
+            #labels, jumps
+            case OpCode.CJMP:
+                assert len(op.args) == 1, f"CJMP takes one argument. Got: {op.args}"
+                val = op.args[0]
+                fl = self.stack.pop()
+                if fl == 1:
+                    self.ip = code[labels][val]
+                else:
+                    pass
+            case OpCode.JMP:
+                assert len(op.args) == 1, f"JMP takes one argument. Got: {op.args}"
+                val = op.args[0]
+                self.ip = labels[val]
+'''
+
+'''
+
+class VM:
+#    def __init__(self):
+#
+
+    def run_code(code: list):
+        pass
+
+    def run_code_from_json(json_path: str):
+        pass
+
+
+    def dump_stack(pkl_path: str):
+        pass
+
+    def load_stack(pkl_path: str):
+        pass
+
+
+    def dump_memory(pkl_path: str):
+        pass
+
+    def load_memory(pkl_path: str):
+        pass
+'''

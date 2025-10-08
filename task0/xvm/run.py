@@ -1,11 +1,10 @@
 from pathlib import Path
 from xvm.vm import VM, parse_string, OpCode, Op, convert_to_number
 
+#debugger
 def xvm_debug():
     vm = VM()
-    code = []   # список інструкцій (Op)
-    labels = {}
-    ip = 0      # instruction pointer (індекс у code)
+    code = dict()   
 
     print("XVM Debugger (minimal). Type 'info' or 'exit'.")
 
@@ -18,19 +17,17 @@ def xvm_debug():
 
         if not line:
             continue
-        #Команда - command, Аргументи - args
+
         command, *args = line.split(maxsplit=1)
         arg = args[0] if args else ""
         cmd = command.lower()
 
-
-        # ---- exit/quit ----
+        #exit or quit
         if cmd in ("exit", "quit"):
             print("\nDebug was stopped")
             return
 
-
-        # ---- info/help ----
+        #info or help
         elif cmd in ("info", "help"):
             print("Commands:")
             print("  1) Operations: ")
@@ -48,16 +45,15 @@ def xvm_debug():
             print("  Exit")
             continue
 
-
-
-        # ---- load ----
+        #load
         elif cmd == "load":
-            labels = {}
-            for i, op in enumerate(code):
-                if op.opcode == OpCode.LABEL:
-                    labels[op.args[0]] = i
+            # Якщо немає аргумента 
+            if not arg:
+                print("Usage: load <path>")
+                continue
             
-            path = Path(arg.strip("'\""))
+            path = Path(arg.strip().strip("'\""))
+
             if not path.exists() or not path.is_file():
                 print("File not found")
                 continue
@@ -69,172 +65,195 @@ def xvm_debug():
                 continue
 
             try:
-                code = parse_string(text)  
+                parsed_text = parse_text(text)
             except Exception as e:
                 print(f"Failed to parse: {e}")
                 continue
             print("File loaded succesfully")
-            # скидаємо стан, щоб все починалось "заново"
-            ip = 0
+
+            code = dict()
+            for func in parsed_text:
+                func_text = "\n".join(parsed_text[func])
+                func_code = parse_string(func_text)
+                code[func] = func_code
+
+            #reset VM state
             vm.stack.clear()
             vm.variables.clear()
 
-            # print(f"Loaded {len(code)} instruction(s) from {path}")
-            # # маленький прев’ю-листинг перших до 10 інструкцій
-            # for i, op in enumerate(code[:10]):
-            #     mark = "->" if i == ip else "  "
-            #     print(f"{mark} {i:04d}: {repr(op)}")
-            # continue
+            vm.ip = 0                     
+            vm.current_frame = '$entrypoint$'
+            vm.frames.clear()
+            vm.saved_ips.clear()
 
-
-
-
-        # ---- run ----     
+        #run
         elif cmd == "run":
             try:
-                while True:
-                    op = code[ip]
-                    vm.run_op(op, labels)
-                    ip += 1
+                vm.run_code(code)
             except StopIteration:
-                print(f"Stopped at instruction {ip} (BREAKPOINT)")
+                print(f"Stopped at instruction {vm.ip} (BREAKPOINT)")
+                vm.ip += 1 
             except IndexError:
                 print("End of program reached.")
             continue
-
         
-        # ---- step ----         
+        #step        
         elif cmd == "step":
-            ip = step_instruction(vm, ip, code, labels)
+            if not code:
+                print("No program loaded. Use: load <path>")
+                continue
+            if vm.ip >= len(code[vm.current_frame]['instructions']):
+                print("IP at end; nothing to execute.")
+                continue
+
+            op = code[vm.current_frame]['instructions'][vm.ip]
+            
+            if op.opcode == OpCode.BREAKPOINT:
+                print(f"{vm.ip:04d}: {repr(op)}  # BREAKPOINT consumed")
+                #update ip and op
+                vm.ip += 1
+
+            else:
+                print(f"{vm.ip:04d}: {repr(op)}")
+                try:
+                    vm.run_op(op, code[vm.current_frame]['labels'])
+                #dont change ip if exception
+                except AssertionError as e:
+                    # типова помилка твоєї VM (наприклад, змінної немає)
+                    print(f"Runtime error: {e}")
+                else:
+                    vm.ip += 1
+
             continue
 
-
-        # ---- next ----   якщо поточна інструкція — CALL, то не заходиш у функцію; 
-        # виконуєш її повністю і зупиняєшся на наступній інструкції після виклику
+        #next
         elif cmd == "next":
             if not code:
                 print("No program loaded. Use: load <path>")
                 continue
-            if ip >= len(code):
+            if vm.ip >= len(code[vm.current_frame]['instructions']):
                 print("IP at end; nothing to execute.")
                 continue
 
-            op = code[ip]
-            start_depth = len(getattr(vm, "frames", []))
-            start_ip = ip
+            op = code[vm.current_frame]['instructions'][vm.ip]
 
+            #if not call, just execute step
+            if op.opcode != OpCode.CALL:           
+                if op.opcode == OpCode.BREAKPOINT:
+                    print(f"{vm.ip:04d}: {repr(op)}  # BREAKPOINT consumed")
+                    #update ip and op
+                    vm.ip += 1
 
-            # 1) Якщо НЕ CALL → це звичайний step
-            if op.opcode != OpCode.CALL:
-                ip = step_instruction(vm, ip, code, labels)
-                continue
+                else:
+                    print(f"{vm.ip:04d}: {repr(op)}")
+                    try:
+                        vm.run_op(op, code[vm.current_frame]['labels'])
+                    #dont change ip if exception
+                    except AssertionError as e:
+                        # типова помилка твоєї VM (наприклад, змінної немає)
+                        print(f"Runtime error: {e}")
+                    else:
+                        vm.ip += 1
 
-            # 2) CALL: step over
-            print(f"{ip:04d}: {repr(op)}  # CALL (step over)")
-            try:
-                vm.run_op(op, labels) 
-            except StopIteration:
-                print(f"Stopped at instruction {ip} (BREAKPOINT)")
-                continue
-            except AssertionError as e:
-                print(f"Runtime error: {e}")
-                continue
+            #if call, step over
+            #we need to execute call to change frame
+            #and then run full function code
             else:
-                # VM могла змінити власний vm.ip (JMP тощо): синхронізуємо
-                ip = (vm.ip + 1) if hasattr(vm, "ip") and vm.ip != start_ip else (ip + 1)
+                #execute call
+                print(f"{vm.ip:04d}: {repr(op)}  # CALL (step over)")
+                vm.run_op(op, code[vm.current_frame]['labels'])
+                vm.ip += 1
+                
+                #if num of calls and rets is equal
+                #then func has finished calling sub-funcs (if any)
+                #and func has returned back
+                num_calls = 1
+                num_rets = 0
 
+                #simulate run_code 
+                #but only until this func returns 
+                try:
+                    while vm.ip < len(code[vm.current_frame]['instructions']): 
+                        op = code[vm.current_frame]['instructions'][vm.ip]
+                        #count number of calls and rets
+                        if op.opcode == OpCode.CALL:
+                            num_calls += 1
+                        elif op.opcode == OpCode.RET:
+                            num_rets += 1
 
+                        #run op (ret included)                        
+                        vm.run_op(op, code[vm.current_frame]['labels'])
+                        vm.ip += 1
 
-            # 3) Виконуємо всередині функції, поки не повернемось на початкову глибину
-                while len(getattr(vm, "frames", [])) > start_depth:
-                    if ip >= len(code):
-                        print("Program finished while stepping over call.")
-                        break
-
-                    # Стоп до BREAKPOINT всередині функції
-                    if code[ip].opcode == OpCode.BREAKPOINT:
-                        print(f"Stopped at BREAKPOINT @ {ip} (inside called function)")
-                        break
-
-                    prev_ip = ip
-                    ip = step_instruction(vm, ip, code, labels)
-
-                    # якщо step зупинився (брейкпоінт/помилка) і ip не зрушився — вийдемо
-                    if ip == prev_ip and len(getattr(vm, "frames", [])) > start_depth:
-                        break
-
-                # Ми вже ПІСЛЯ CALL (глибина повернулась) — це й є «step over»
+                        #func returned, stop running code
+                        if num_calls == num_rets:
+                            break
+                except StopIteration:
+                    print(f"Stopped at instruction {vm.ip} (BREAKPOINT)")
+                    vm.ip += 1 
+                except IndexError:
+                    print("End of program reached.")
                 continue
 
-
-        # ---- list ----    
+        #list    
         elif cmd == "list":
             if not code:
                 print("No program loaded. Use: load <path>")
                 return
-            start = max(0, ip - 5)
-            end = min(len(code), ip + 6) # 6 - того шо 5 вперед і нинішня
+            start = max(0, vm.ip - 5)
+            end = min(len(code[vm.current_frame]['instructions']), vm.ip + 6) # 6 - того шо 5 вперед і нинішня
             for i in range(start, end):
-                mark = "->" if i == ip else "  "
+                mark = "->" if i == vm.ip else "  "
                 try:
-                    desc = repr(code[i])
+                    desc = repr(code[vm.current_frame]['instructions'][i])
                 except Exception:
                     desc = "<bad op>"
                 print(f"{mark} {i:04d}: {desc}")
             continue
 
-        # Функція getattr() повертає значення іменованого атрибута об’єкта. 
-        # Якщо його не знайдено, то повертається значення за замовчуванням, надане функцією.
-
-        # ---- print <name> (глобально, поки без локальних фреймів) ----
+        #print
         elif cmd == "print":
             name = (arg.split() or [""])[0]
             if not name:
                 print("Usage: print <name>")
                 continue
 
-            # визначаємо, чи ми всередині функції (так само буде в frame)
-            in_function = (
-                getattr(vm, "current_frame", "$entrypoint$") != "$entrypoint$"
-            ) or bool(getattr(vm, "frames", []))
-
-            if in_function:
-                # ми у функції → шукати ТІЛЬКИ у локальному фреймі
-                variables_map = getattr(vm, "variables", {})
-                if name in variables_map:
-                    print(repr(variables_map[name]))
-                else:
-                    print(f"{name} is not defined in local frame")
+            if name in vm.variables:
+                print(repr(vm.variables[name]))
             else:
-                # поза функцією → глобальний рівень
-                globals_map = getattr(vm, "variables", {})
-                if name in globals_map:
-                    print(repr(globals_map[name]))
-                else:
-                    print(f"{name} is not defined")
+                print(f"{name} is not defined")
             continue
         
-
-
-
-
-        # ---- stack [N] ----
+        #stack (n)
         elif cmd == "stack":
             print(vm.show_stack(arg))
             continue
 
-
-        # ---- memory ----
+        #memory
         elif cmd == "memory":
-            if not vm.variables:
-                print("(The memory is empty)")
+            variables_map = getattr(vm, "variables", {})
+            if not variables_map:
+                print(f"(Frame {vm.current_frame} has no variables)")
             else:
-                for k, v in vm.variables.items():
-                    print(f"{k} = {repr(v)}")
+                print(f"Frame {vm.current_frame} variables\n")
+                for k, v in variables_map.items():
+                    print(f"  {k} = {repr(v)}")
+                print("\n")
+
+            if vm.frames:
+                if len(vm.frames) != len(vm.saved_ips):
+                    raise Exception(f"Frames are handled incorrectly!")
+                for i in range(len(vm.frames)):
+                    if not vm.frames[i].items():
+                        print(f"Frame {vm.saved_ips[i][0]}' memory is empty\n")
+                        continue
+                    print(f"Frame {vm.saved_ips[i][0]} variables")
+                    for key, value in vm.frames[i].items():
+                        print(f"  {key} = {repr(value)}")
+                    print("\n")
             continue
 
-
-        # ---- exec ----
+        #exec
         elif cmd == "exec":
             parts = arg.split()
             if not parts:
@@ -242,17 +261,16 @@ def xvm_debug():
                 continue
 
             try:
-                opcode_name = parts[0]
+                opcode_name =  OpCode[parts[0]]
                 args = parts[1:]
-
                 parsed_args = [convert_to_number(a) for a in args]
 
                 # створюємо об'єкт Op, бо інакше всьо фігня (ми даємо текстову команду по факту, а нам треба об'єкт OP)
-                opcode = OpCode[opcode_name]
-                op = Op(opcode, *parsed_args)
+                op = Op(opcode_name, *parsed_args)
 
                 print(f"Executing: {repr(op)}")
-                vm.run_op(op)
+
+                vm.run_op(op, code[vm.current_frame]['labels'])
 
             except KeyError:
                 print(f"Unknown opcode: {parts[0]}")
@@ -262,7 +280,7 @@ def xvm_debug():
             continue
 
         
-        # ---- frame ----
+        #frame
         elif cmd == "frame":
             variables_map = getattr(vm, "variables", {})
             current_func = getattr(vm, "current_frame", "?")
@@ -285,40 +303,41 @@ def xvm_debug():
             # Невідома команда
             print(f"Unknown command: {cmd}. Type 'info'.")
 
+def parse_text(text):
+    functions = {}
+    current_name = None
+    current_ops = []
 
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
 
-def step_instruction(vm, ip, code, labels):
-    if not code:
-        print("No program loaded. Use: load <path>") 
-        return ip
-    if ip >= len(code):
-        print("IP at end; nothing to execute.")
-        return ip
+        if line.startswith("function "):
+            #exctract func name between first and last quote instance
+            start = line.find('"')
+            end = line.rfind('"')
+            if start != -1 and end != -1 and end > start:
+                #if we were exctracting function before
+                #write its operations and stop extracting
+                if current_name:
+                    functions[current_name] = current_ops
+                #get new function
+                current_name = line[start + 1:end]
+                current_ops = []
+            else:
+                raise Exception("Code is formatted incorrectly")
+        else:
+        #get insrtructions
+            if current_name:
+                current_ops.append(line)
+
+    #write last function (stop collecting ops, write to our dict)
+    if current_name: 
+        functions[current_name] = current_ops
+
+    return functions      
     
-    op = code[ip]
 
-    # 1) якщо стаємо на BREAKPOINT (саму інструкцію) — ігноруємо його, тобто нічого не робимо, але ip міняємо, бо по факту інструкція типу пройдена
-    if op.opcode == OpCode.BREAKPOINT:
-        print(f"{ip:04d}: {repr(op)}  # BREAKPOINT consumed")
-        ip += 1
-        return ip
-
-    # 2) звичайна інструкція — виконуємо рівно одну, і якщо вона успішна теж іp+=1
-    print(f"{ip:04d}: {repr(op)}")
-    try:
-        vm.run_op(op, labels)
-        #Якщо екзепшени, то ip не руxаємо.
-    except StopIteration:
-        # на випадок, якщо BREAKPOINT всередині VM сигналізує виключенням
-        print(f"Stopped at instruction {ip} (BREAKPOINT)")
-        return ip
-    except AssertionError as e:
-        # типова помилка твоєї VM (наприклад, змінної немає)
-        print(f"Runtime error: {e}")
-        return ip
-    else:
-        ip += 1
-        return ip
-        
 
 

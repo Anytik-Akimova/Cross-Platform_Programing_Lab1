@@ -1,0 +1,76 @@
+function "pow"
+
+STORE_VAR "x"
+STORE_VAR "n"
+
+LOAD_CONST 0
+LOAD_VAR "n"
+EQ
+CJMP "Power 0"
+
+LOAD_CONST 2
+LOAD_VAR "n"
+DIV
+
+STORE_VAR "d"
+LOAD_VAR "d"
+
+LOAD_CONST 2
+MUL
+
+LOAD_VAR "n"
+EQ 
+
+CJMP "Even"
+
+LOAD_CONST 1
+LOAD_VAR "n"
+EQ
+
+CJMP "Stop"
+
+LOAD_VAR "d"
+LOAD_VAR "x"
+LOAD_CONST "pow"
+CALL
+STORE_VAR "xn"
+
+LOAD_VAR "xn"
+LOAD_VAR "xn"
+MUL
+
+LOAD_VAR "x"
+MUL
+RET
+
+LABEL "Stop"
+LOAD_VAR "x"
+RET
+
+LABEL "Even"
+
+LOAD_VAR "d"
+LOAD_VAR "x"
+LOAD_CONST "pow"
+CALL
+STORE_VAR "xn"
+
+LOAD_VAR "xn"
+LOAD_VAR "xn"
+MUL
+RET
+
+LABEL "Power 0"
+LOAD_CONST "This func can't take power of 0."
+RET
+
+function "$entrypoint$"
+LOAD_CONST 4
+LOAD_CONST 2.8
+
+LOAD_CONST "pow"
+CALL
+
+STORE_VAR "xn"
+LOAD_VAR "xn"
+PRINT

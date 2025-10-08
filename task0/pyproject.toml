@@ -11,7 +11,7 @@ authors = [
 ]
 
 [project.scripts]
-xvm = "xvm.run:xvm_debug"
+xvm_py = "xvm.run:xvm_debug"
 
 
 [tool.setuptools.packages.find]

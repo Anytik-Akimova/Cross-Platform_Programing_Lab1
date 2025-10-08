@@ -52,10 +52,10 @@ def xvm_debug():
 
         # ---- load ----
         elif cmd == "load":
-            # labels = {}
-            # for i, op in enumerate(code):
-            #     if op.opcode == OpCode.LABEL:
-            #         labels[op.args[0]] = i
+            labels = {}
+            for i, op in enumerate(code):
+                if op.opcode == OpCode.LABEL:
+                    labels[op.args[0]] = i
             
             path = Path(arg.strip("'\""))
             if not path.exists() or not path.is_file():

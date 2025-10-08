@@ -4,11 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xvm"
-version = "2025.0.0"
+version = "2025.0.3"
 authors = [
-  {name = "Student Name 1", email = "student_email1@gmail.com"},
-  {name = "Student Name 2", email = "student_email2@gmail.com"},
+  {name = "Hatina Valeriia", email = "gatina.valeria@lll.kpi.ua"},
+  {name = "Anna Akimova", email = "akimova.anna@lll.kpi.ua"},
 ]
 
 [project.scripts]
 xvm = "xvm.run:xvm_debug"
+
+
+[tool.setuptools.packages.find]
+include = ["xvm*"]
+exclude = ["tests*", "useful_examples*"]

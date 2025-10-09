@@ -7,38 +7,97 @@ import textwrap
 # YOUR CODE BELOW
 #############################################
 
-# Implement `has_recursion`.
+#helper func: get aliases in a tree
+def find_aliases(tree, func_name):
+    aliases = {func_name}  
 
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            if isinstance(node.value, ast.Name) and node.value.id == func_name:
+                for target in node.targets:
+                    if isinstance(target, ast.Name):
+                        aliases.add(target.id)
+    
+    return aliases
+
+#helper func: find func names in a tree 
+def find_func(tree, aliases):
+    called_funcs = set()
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            #check for simple/aliased recursion
+            if node.func.id in aliases:
+                return True, called_funcs  
+            #write any other funcs 
+            else:
+                called_funcs.add(node.func.id)
+    
+    return False, called_funcs
+
+#helper func: recursively traverse sub-funcs
+def traverse_funcs(i, func_name, called_funcs, closure_vars, aliases):
+    if i >= 10:
+        return
+
+
+    for cfunc in called_funcs:
+        try:
+            cfunc_obj = closure_vars[cfunc]
+        except Exception as e:
+            print(f"Internal funcs error")
+        
+        #get tree and locals 
+        source = inspect.getsource(cfunc_obj)
+        source = textwrap.dedent(source)
+        tree = ast.parse(source)
+        closure_vars_inner = inspect.getclosurevars(cfunc_obj).nonlocals
+
+        #get new aliases, if any (of original function)
+        aliases_internal = find_aliases(tree, func_name)
+        aliases = aliases.union(aliases_internal)
+
+        #traverse this tree 
+        fl, called_funcs = find_func(tree, aliases)
+        if fl == True:
+            return True
+                
+        if called_funcs:
+            fl = traverse_funcs(i+1, func_name, called_funcs, closure_vars_inner, aliases)
+            if fl == True:
+                return True
+
+    return False
+
+# Implement `has_recursion`.
 def has_recursion(func):
     #get function source code
     source = inspect.getsource(func)
-    #remove irrelevant inddentation from nesting
+    #remove irrelevant indentation from nesting
     source = textwrap.dedent(source) 
 
     #create ast 
     tree = ast.parse(source)
-    print(ast.dump(tree))
 
+    #for mutual recursion
+    closure_vars = inspect.getclosurevars(func).nonlocals
+
+    #first, get all aliases
     func_name = func.__name__
-    aliases = {func_name}  # track names that refer to the function
+    aliases = find_aliases(tree, func_name)
 
-    # First pass: find aliases like `alias = func_name`
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assign):
-            if isinstance(node.value, ast.Name) and node.value.id == func_name:
-                # handle `a = func_name`
-                for target in node.targets:
-                    if isinstance(target, ast.Name):
-                        aliases.add(target.id)
-
-    # Second pass: find any calls to aliases
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            if node.func.id in aliases:
-                return True  # recursion found
+    #second, find calls to function/aliases
+    fl, called_funcs = find_func(tree, aliases)
+    if fl == True:
+        return True
+    
+    #check any called funcs
+    if called_funcs:
+        fl = traverse_funcs(0, func_name, called_funcs, closure_vars, aliases)
+        if fl == True:
+            return True
 
     return False
-    #print(func.__name__)
 
 #############################################
 

@@ -37,10 +37,7 @@ PRINT
 """
 
 def test1():
-    code_entry = parse_string(TEST1)
-    code = {
-        "$entrypoint$": code_entry
-    }
+    code = parse_string(TEST1)
     inp = [8.0, 5.0]
     io = MyIO(inp)
     vm = VM(input_fn=io.input_fn, print_fn=io.print_fn)
@@ -59,10 +56,7 @@ PRINT
 """
 
 def test2():
-    code_entry = parse_string(TEST2)
-    code = {
-        "$entrypoint$": code_entry
-    }
+    code = parse_string(TEST2)
     inp = ["Hello, World!"]
     io = MyIO(inp)
     vm = VM(input_fn=io.input_fn, print_fn=io.print_fn)

@@ -361,6 +361,14 @@ class VM():
 
     def run_code(self, code):
 
+        elements = list(code.values())
+        #if elements are inst list + labels dict -> no functions
+        if isinstance(elements[0], list) and isinstance(elements[1], dict):
+            #add starting frame
+            code = {self.current_frame: code}
+
+        del elements
+       
         while self.ip < len(code[self.current_frame]['instructions']): 
             #self.run_op(code[self.ip])
             self.run_op(code[self.current_frame]['instructions'][self.ip], code[self.current_frame]['labels'])

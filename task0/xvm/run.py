@@ -142,6 +142,13 @@ def xvm_debug():
 
         #run
         elif cmd == "run":
+            if not code:
+                print("No program loaded. Use: load <path>")
+                continue
+            if vm.ip >= len(code[vm.current_frame]['instructions']):
+                print("IP at end; nothing to execute.")
+                continue
+
             try:
                 while vm.ip < len(code[vm.current_frame]['instructions']): 
             
@@ -335,6 +342,10 @@ def xvm_debug():
 
         #print
         elif cmd == "print":
+            if not code:
+                print("No program loaded. Use: load <path>")
+                continue
+            
             name = (arg.split() or [""])[0]
             if not name:
                 print("Usage: print <name>")
@@ -348,6 +359,9 @@ def xvm_debug():
         
         #stack (n)
         elif cmd == "stack":
+            if not code:
+                print("No program loaded. Use: load <path>")
+                continue
 
             if not vm.stack:
                 print("Stack: []")
@@ -388,6 +402,10 @@ def xvm_debug():
 
         #memory
         elif cmd == "memory":
+            if not code:
+                print("No program loaded. Use: load <path>")
+                continue
+
             variables_map = getattr(vm, "variables", {})
             if not variables_map:
                 print(f"(Frame {vm.current_frame} has no variables)")
@@ -412,6 +430,10 @@ def xvm_debug():
 
         #exec
         elif cmd == "exec":
+            if not code:
+                print("No program loaded. Use: load <path>")
+                continue
+
             parts = arg.split()
             if not parts:
                 print("Usage: exec <OPCODE> <arg1, arg2, ..., argN>")
@@ -438,6 +460,10 @@ def xvm_debug():
         
         #frame
         elif cmd == "frame":
+            if not code:
+                print("No program loaded. Use: load <path>")
+                continue
+            
             variables_map = getattr(vm, "variables", {})
             current_func = getattr(vm, "current_frame", "?")
 

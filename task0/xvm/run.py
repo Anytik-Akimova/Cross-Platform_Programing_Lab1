@@ -1,4 +1,6 @@
 import copy
+import sys
+import traceback
 from pathlib import Path
 from xvm.vm import VM, parse_string, OpCode, Op, convert_to_number
 
@@ -59,6 +61,7 @@ def parse_text(text):
 
 #debugger
 def xvm_debug():
+    fl = 0 #flag for VM errors 
     vm = VM()
     code = dict()   
 
@@ -103,6 +106,9 @@ def xvm_debug():
 
         #load
         elif cmd == "load":
+            #if new file was loaded, error flag is refreshed
+            fl = 0
+
             if not arg:
                 print("Usage: load <path>")
                 continue
@@ -142,6 +148,10 @@ def xvm_debug():
 
         #run
         elif cmd == "run":
+            if fl == 1:
+                print("XVM has crashed, instruction execution is forbidden. Please reload your program file.")
+                continue
+
             if not code:
                 print("No program loaded. Use: load <path>")
                 continue
@@ -176,10 +186,26 @@ def xvm_debug():
                 vm.ip += 1 
             except IndexError:
                 print("End of program reached.")
+            except Exception:
+                #check if the error came from VM
+                e_type, e_value, e_traceback = sys.exc_info()
+                e_stack = traceback.extract_tb(e_traceback)
+                e_frame = e_stack[-1]
+        
+                if 'vm.py' in e_frame.filename:
+                    print(f"Runtime error at instruction {vm.ip}: {repr(op)}")
+                    print(f"Error: {e_value}")
+                    fl = 1
+                else:
+                    print(f"Debugger error: {e_value}")
             continue
         
         #step        
         elif cmd == "step":
+            if fl == 1:
+                print("XVM has crashed, instruction execution is forbidden. Please reload your program file.")
+                continue
+
             if not code:
                 print("No program loaded. Use: load <path>")
                 continue
@@ -215,9 +241,18 @@ def xvm_debug():
                 try:
                     vm.run_op(op, code[vm.current_frame]['labels'])
                 #dont change ip if exception
-                except AssertionError as e:
-                    # типова помилка твоєї VM (наприклад, змінної немає)
-                    print(f"Runtime error: {e}")
+                except Exception:
+                    #check if the error came from VM
+                    e_type, e_value, e_traceback = sys.exc_info()
+                    e_stack = traceback.extract_tb(e_traceback)
+                    e_frame = e_stack[-1]
+        
+                    if 'vm.py' in e_frame.filename:
+                        print(f"Runtime error at instruction {vm.ip}: {repr(op)}")
+                        print(f"Error: {e_value}")
+                        fl = 1
+                    else:
+                        print(f"Debugger error: {e_value}")
                 else:
                     vm.ip += 1
 
@@ -225,6 +260,10 @@ def xvm_debug():
 
         #next
         elif cmd == "next":
+            if fl == 1:
+                print("XVM has crashed, instruction execution is forbidden. Please reload your program file.")
+                continue
+
             if not code:
                 print("No program loaded. Use: load <path>")
                 continue
@@ -262,11 +301,22 @@ def xvm_debug():
                     try:
                         vm.run_op(op, code[vm.current_frame]['labels'])
                     #dont change ip if exception
-                    except AssertionError as e:
-                        # типова помилка твоєї VM (наприклад, змінної немає)
-                        print(f"Runtime error: {e}")
+                    except Exception:
+                        #check if the error came from VM
+                        e_type, e_value, e_traceback = sys.exc_info()
+                        e_stack = traceback.extract_tb(e_traceback)
+                        e_frame = e_stack[-1]
+        
+                        if 'vm.py' in e_frame.filename:
+                            print(f"Runtime error at instruction {vm.ip}: {repr(op)}")
+                            print(f"Error: {e_value}")
+                            fl = 1
+                        else:
+                            print(f"Debugger error: {e_value}")
                     else:
                         vm.ip += 1
+
+                    continue
 
             #if call, step over
             #we need to execute call to change frame
@@ -322,6 +372,18 @@ def xvm_debug():
                     vm.ip += 1 
                 except IndexError:
                     print("End of program reached.")
+                except Exception:
+                    #check if the error came from VM
+                    e_type, e_value, e_traceback = sys.exc_info()
+                    e_stack = traceback.extract_tb(e_traceback)
+                    e_frame = e_stack[-1]
+        
+                    if 'vm.py' in e_frame.filename:
+                        print(f"Runtime error at instruction {vm.ip}: {repr(op)}")
+                        print(f"Error: {e_value}")
+                        fl = 1
+                    else:
+                        print(f"Debugger error: {e_value}")
                 continue
 
         #list    
@@ -330,13 +392,23 @@ def xvm_debug():
                 print("No program loaded. Use: load <path>")
                 return
             start = max(0, vm.ip - 5)
-            end = min(len(code[vm.current_frame]['instructions']), vm.ip + 6) # 6 - того шо 5 вперед і нинішня
+            end = min(len(code[vm.current_frame]['instructions']), vm.ip + 6) 
             for i in range(start, end):
                 mark = "->" if i == vm.ip else "  "
                 try:
                     desc = repr(code[vm.current_frame]['instructions'][i])
                 except Exception:
-                    desc = "<bad op>"
+                    #check if the error came from VM
+                    e_type, e_value, e_traceback = sys.exc_info()
+                    e_stack = traceback.extract_tb(e_traceback)
+                    e_frame = e_stack[-1]
+        
+                    if 'vm.py' in e_frame.filename:
+                        print(f"Runtime error at instruction {vm.ip}: {repr(op)}")
+                        print(f"Error: {e_value}")
+                        fl = 1
+                    else:
+                        desc = "<bad op>"
                 print(f"{mark} {i:04d}: {desc}")
             continue
 
@@ -397,6 +469,18 @@ def xvm_debug():
                     print("Incorrect input. Usage: stack [N]")
             except ValueError:
                     print("Arguments must be numbers!")
+            except AssertionError:
+                #check if the error came from VM
+                e_type, e_value, e_traceback = sys.exc_info()
+                e_stack = traceback.extract_tb(e_traceback)
+                e_frame = e_stack[-1]
+        
+                if 'vm.py' in e_frame.filename:
+                    print(f"Runtime error at instruction {vm.ip}: {repr(op)}")
+                    print(f"Error: {e_value}")
+                    fl = 1
+                else:
+                    print(f"Debugger error: {e_value}")
             
             continue
 
@@ -430,6 +514,10 @@ def xvm_debug():
 
         #exec
         elif cmd == "exec":
+            if fl == 1:
+                print("XVM has crashed, instruction execution is forbidden. Please reload your program file.")
+                continue
+            
             if not code:
                 print("No program loaded. Use: load <path>")
                 continue
@@ -444,7 +532,6 @@ def xvm_debug():
                 args = parts[1:]
                 parsed_args = [convert_to_number(a) for a in args]
 
-                # створюємо об'єкт Op, бо інакше всьо фігня (ми даємо текстову команду по факту, а нам треба об'єкт OP)
                 op = Op(opcode_name, *parsed_args)
 
                 print(f"Executing: {repr(op)}")
@@ -454,8 +541,16 @@ def xvm_debug():
             except KeyError:
                 print(f"Unknown opcode: {parts[0]}")
 
-            except Exception as e:
-                print(f"Execution failed: {e}")
+            except Exception:
+                #check if the error came from VM
+                e_type, e_value, e_traceback = sys.exc_info()
+                e_stack = traceback.extract_tb(e_traceback)
+                e_frame = e_stack[-1]
+        
+                if 'vm.py' in e_frame.filename:
+                    print(f"VM error: {e_value}")
+                else:
+                    print(f"Execution failed: {e_value}")
             continue
         
         #frame
@@ -463,7 +558,7 @@ def xvm_debug():
             if not code:
                 print("No program loaded. Use: load <path>")
                 continue
-            
+
             variables_map = getattr(vm, "variables", {})
             current_func = getattr(vm, "current_frame", "?")
 

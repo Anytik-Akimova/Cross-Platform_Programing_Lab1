@@ -36,12 +36,16 @@ def find_func(tree, aliases):
     return False, called_funcs
 
 #helper func: recursively traverse sub-funcs
-def traverse_funcs(i, func_name, called_funcs, closure_vars, aliases):
-    if i >= 10:
-        return
-
+def traverse_funcs(func_name, called_funcs, visited_funcs, closure_vars, aliases):
 
     for cfunc in called_funcs:
+        #if func was visited already, skip 
+        if cfunc in visited_funcs:
+            continue
+        
+        #add to visited funcs
+        visited_funcs.add(cfunc)
+
         try:
             cfunc_obj = closure_vars[cfunc]
         except Exception as e:
@@ -63,7 +67,7 @@ def traverse_funcs(i, func_name, called_funcs, closure_vars, aliases):
             return True
                 
         if called_funcs:
-            fl = traverse_funcs(i+1, func_name, called_funcs, closure_vars_inner, aliases)
+            fl = traverse_funcs(func_name, called_funcs, visited_funcs, closure_vars_inner, aliases)
             if fl == True:
                 return True
 
@@ -93,7 +97,7 @@ def has_recursion(func):
     
     #check any called funcs
     if called_funcs:
-        fl = traverse_funcs(0, func_name, called_funcs, closure_vars, aliases)
+        fl = traverse_funcs(func_name, called_funcs, set(), closure_vars, aliases)
         if fl == True:
             return True
 

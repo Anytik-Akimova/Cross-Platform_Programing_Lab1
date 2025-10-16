@@ -2,7 +2,7 @@ import copy
 import sys
 import traceback
 from pathlib import Path
-from xvm.vm import VM, parse_string, OpCode, Op, convert_to_number
+from vm import VM, parse_string, OpCode, Op, convert_to_number
 
 #cant forget IO
 class MyIO:

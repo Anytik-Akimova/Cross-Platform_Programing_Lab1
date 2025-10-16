@@ -127,8 +127,6 @@ def test_simple():
             return (x * factorial(x-1))
 
     assert has_recursion(factorial)
-    print("test_simple passed")
-
 
 def test_coupled():
     def func1(x):
@@ -145,8 +143,6 @@ def test_coupled():
     assert has_recursion(func1)
     assert has_recursion(func2)
     assert not has_recursion(func3)
-    print("test_coupled passed")
-
 
 def test_big():
     def func1(i, j):
@@ -189,7 +185,6 @@ def test_big():
     assert not has_recursion(func6)
     assert has_recursion(func3)
     assert has_recursion(func4)
-    print("test_big passed")
 
 # Unnecessary test for extra points!
 def test_alias():
@@ -204,9 +199,3 @@ def test_alias():
     
     assert has_recursion(func1)
     assert not has_recursion(func2)
-    print("test_alias passed")
-
-test_simple()
-test_coupled()
-test_big()
-test_alias()

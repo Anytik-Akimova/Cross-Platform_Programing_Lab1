@@ -47,7 +47,6 @@ def test_no_loops_ifs():
         return a + b
     assert func.num_loops == 0, func.num_loops
     assert func.num_ifs == 0, func.num_ifs
-    print("test_no_loops_ifs passed")
 
 def test_ifs():
     @my_counter
@@ -60,7 +59,6 @@ def test_ifs():
             return 1
     assert func.num_loops == 0, func.num_loops
     assert func.num_ifs == 2, func.num_ifs
-    print("test_ifs passed")
 
 def test_loops():
     @my_counter
@@ -71,8 +69,6 @@ def test_loops():
                 j += 1
     assert func.num_loops == 2, func.num_loops
     assert func.num_ifs == 0, func.num_ifs
-    print("test_loops passed")
-
 
 def test_if_loops():
     @my_counter
@@ -87,7 +83,6 @@ def test_if_loops():
 
     assert func.num_loops == 2, func.num_loops
     assert func.num_ifs == 1, func.num_ifs
-    print("test_if_loops passed")
 
 def test_big():
     @my_counter
@@ -119,10 +114,3 @@ def test_big():
 
     assert func.num_loops == 4, func.num_loops
     assert func.num_ifs == 5, func.num_ifs
-    print("test_big passed")
-
-test_no_loops_ifs()
-test_ifs()
-test_loops()
-test_if_loops()
-test_big()

@@ -91,7 +91,7 @@ class TestDebugger(unittest.TestCase):
         
         output = self.run_debugger_with_commands(commands)
         
-        # 1) Success messagw
+        # 1) Success message
         self.assertIn("File loaded succesfully", output)
         
         # 2) Instruction pointer
@@ -117,7 +117,7 @@ class TestDebugger(unittest.TestCase):
         
         output = self.run_debugger_with_commands(commands)
         
-        self.assertIn(f"File {non_existent_path} not found", output)
+        self.assertIn(f"File not found", output)
     
     
     def test_load_with_no_path(self):
@@ -127,7 +127,7 @@ class TestDebugger(unittest.TestCase):
         ]
         
         output = self.run_debugger_with_commands(commands)
-        self.assertIn(f"File  not found", output)
+        self.assertIn(f"Usage: load <path>", output)
 
 
 
@@ -174,6 +174,195 @@ class TestDebugger(unittest.TestCase):
     
 
 
+    def test_run_norm_command(self):
+        code_without_breakpoint = UNIT_TEST_CODE.replace("BREAKPOINT", "")
+        test_path = Path("no_breakpoint_program.xvm")
+        with open(test_path, "w", encoding="utf-8") as f:
+            f.write(code_without_breakpoint)
+
+        commands = [
+            f"load {test_path}",
+            "run",
+            "memory", 
+            "exit"
+        ]
+
+        output = self.run_debugger_with_commands(commands)
+        test_path.unlink()
+
+        # 1) If the program ran to completion
+        self.assertIn("End of program reached", output)
+        # 2) Check final variable values
+        self.assertIn("c = 30", output, "The variable 'c' should equal 30 after running the program")
+
+
+    def test_run_without_program_command(self):
+        commands = [
+            "run",
+            "exit"
+        ]
+        output = self.run_debugger_with_commands(commands)
+    
+        self.assertIn("No program loaded.", output)
+        self.assertNotIn("Stopped at instruction", output)
+
+
+
+
+    def test_run_memory_command(self):
+        commands = [
+            f"load {self.test_program_path}",
+            "run",   
+            "memory",
+            "exit"
+        ]
+        output = self.run_debugger_with_commands(commands)
+        self.assertIn("Stopped at instruction", output)
+        self.assertIn("a = 10", output)
+        self.assertIn("b = 20", output)
+        self.assertNotIn("c =", output, "The variable 'c' should not be set yet")
+    
+
+
+    def test_step_jump_command(self):
+        jmp_test_code = """
+        function "$entrypoint$"
+        LOAD_CONST 5
+        JMP skip_target
+        LOAD_CONST 999      
+        LABEL skip_target
+        STORE_VAR "a"      
+        """
+        test_path = Path("jmp_test_program.xvm")
+        with open(test_path, "w", encoding="utf-8") as f:
+            f.write(jmp_test_code)
+
+        commands = [
+            f"load {test_path}",
+            "step", 
+            "step",  # Doing step on JMP
+            "list",  # Check where the pointer is
+            "exit"
+        ]
+
+        output = self.run_debugger_with_commands(commands)
+        test_path.unlink()
+        pointer_at_target = False
+        for line in output.splitlines():
+            if "->" in line and "STORE_VAR" in line and "'a'" in line:
+                pointer_at_target = True
+                break
+        
+        self.assertTrue(
+            pointer_at_target,
+            "After stepping over JMP, the instruction pointer should be at 'STORE_VAR \"a\"'"
+        )
+
+
+    def test_step_cjump_false(self):
+        cjmp_test_code = """
+        function "$entrypoint$"
+        LOAD_CONST 0          
+        CJMP jump_if_true
+        LOAD_CONST 111      
+        LABEL jump_if_true
+        STORE_VAR "result"
+        """
+        test_path = Path("cjmp_false_test.xvm")
+        with open(test_path, "w", encoding="utf-8") as f:
+            f.write(cjmp_test_code)
+
+        commands = [
+            f"load {test_path}",
+            "step",  
+            "step",  
+            "list",
+            "exit"
+        ]
+
+        output = self.run_debugger_with_commands(commands)
+        test_path.unlink()
+
+        pointer_continued_linearly = False
+        for line in output.splitlines():
+            if "->" in line and "LOAD_CONST" in line and "111" in line:
+                pointer_continued_linearly = True
+                break
+        
+        self.assertTrue(
+            pointer_continued_linearly,
+            "After CJMP with FALSE condition, the instruction pointer should continue linearly to 'LOAD_CONST 111'"
+        )
+
+
+
+    def test_step_cjump_true(self):
+        cjmp_test_code = """
+        function "$entrypoint$"
+        LOAD_CONST 1         
+        CJMP jump_if_true
+        LOAD_CONST 111     
+        LABEL jump_if_true
+        STORE_VAR "result"    
+        """
+        test_path = Path("cjmp_true_test.xvm")
+        with open(test_path, "w", encoding="utf-8") as f:
+            f.write(cjmp_test_code)
+
+        commands = [
+            f"load {test_path}",
+            "step",  
+            "step", 
+            "list",
+            "exit"
+        ]
+
+        output = self.run_debugger_with_commands(commands)
+        test_path.unlink()
+
+        pointer_jumped_correctly = False
+        for line in output.splitlines():
+            if "->" in line and "STORE_VAR" in line and "'result'" in line:
+                pointer_jumped_correctly = True
+                break
+        
+        self.assertTrue(
+            pointer_jumped_correctly,
+            "After stepping over CJMP with TRUE condition, the instruction pointer should be at 'STORE_VAR \"result\"'"
+        )
+
+
+
+
+    def test_next_command(self):
+        test_path = Path("call_next_test.xvm")
+        with open(test_path, "w", encoding="utf-8") as f:
+            f.write(CALL_NEXT_TEST_CODE)
+
+        commands = [
+            f"load {test_path}",
+            "step",  
+            "step",  
+            "next",  
+            "list",  
+            "exit"
+        ]
+        
+        output = self.run_debugger_with_commands(commands)
+        test_path.unlink() 
+
+        
+        pointer_at_correct_instruction = False
+        for line in output.splitlines():
+            if "->" in line and "STORE_VAR" in line and "'result'" in line:
+                pointer_at_correct_instruction = True
+                break
+        
+        self.assertTrue(
+            pointer_at_correct_instruction, 
+            "The instruction pointer should be at 'STORE_VAR \"result\"'      after 'next' command"
+        )
+
 
     
     def test_exec_stack_command(self):
@@ -209,48 +398,23 @@ class TestDebugger(unittest.TestCase):
 
     
     
-    
-    def test_run_memory_command(self):
+    def test_exec_failure_command(self): # testing that a failed 'exec' does not corrupt the current frame or variables
+        
         commands = [
             f"load {self.test_program_path}",
-            "run",   
-            "memory",
+            "step",  
+            "step", 
+            'exec LOAD_VAR "z"',
+            "print a",
+            "frame",
             "exit"
         ]
+
         output = self.run_debugger_with_commands(commands)
-        self.assertIn("Stopped at instruction", output)
-        self.assertIn("a = 10", output)
-        self.assertIn("b = 20", output)
-        self.assertNotIn("c =", output, "The variable 'c' should not be set yet")
-    
+        self.assertIn("error", output, "Exec command should report a failure")
+        self.assertIn("not defined", output, "Message should indicate 'z' is not defined")
+        self.assertIn("a = 10", output, "Variable 'a' should still be accessible and equal to 10")
+   
 
 
-
-    def test_next_command(self):
-        test_path = Path("call_next_test.xvm")
-        with open(test_path, "w", encoding="utf-8") as f:
-            f.write(CALL_NEXT_TEST_CODE)
-
-        commands = [
-            f"load {test_path}",
-            "step",  
-            "step",  
-            "next",  
-            "list",  
-            "exit"
-        ]
-        
-        output = self.run_debugger_with_commands(commands)
-        test_path.unlink() 
-
-        
-        pointer_at_correct_instruction = False
-        for line in output.splitlines():
-            if "->" in line and "STORE_VAR" in line and "'result'" in line:
-                pointer_at_correct_instruction = True
-                break
-        
-        self.assertTrue(
-            pointer_at_correct_instruction, 
-            "The instruction pointer should be at 'STORE_VAR \"result\"'      after 'next' command"
-        )
+   

@@ -26,7 +26,11 @@ def from_stdin_number():
         try:
             numbers.append(int(s))
         except ValueError:
-            numbers.append(float(s))
+            try:
+                numbers.append(float(s))
+            except Exception: 
+                #print("Input must be a number!")
+                raise ValueError("Incorrect debugger input")
 
     return numbers
 
@@ -168,7 +172,11 @@ def xvm_debug():
                     #handle input ops 
                     if op.opcode == OpCode.INPUT_NUMBER:
                         print("Input for INPUT_NUMBER (one arg): ")
-                        inp = from_stdin_number()
+                        try:
+                            inp = from_stdin_number()
+                        except ValueError:
+                            print("Input must be a number!")
+                            continue
                         io = MyIO(inp)
                         vm.input_fn = io.input_fn
                         vm.print_fn = io.print_fn
@@ -227,7 +235,11 @@ def xvm_debug():
                 #handle input ops 
                 if op.opcode == OpCode.INPUT_NUMBER:
                     print("Input for INPUT_NUMBER (one arg): ")
-                    inp = from_stdin_number()
+                    try:
+                        inp = from_stdin_number()
+                    except ValueError:
+                        print("Input must be a number!")
+                        continue
                     io = MyIO(inp)
                     vm.input_fn = io.input_fn
                     vm.print_fn = io.print_fn
@@ -289,7 +301,11 @@ def xvm_debug():
                     #handle input ops 
                     if op.opcode == OpCode.INPUT_NUMBER:
                         print("Input for INPUT_NUMBER (one arg): ")
-                        inp = from_stdin_number()
+                        try:
+                            inp = from_stdin_number()
+                        except ValueError:
+                            print("Input must be a number!")
+                            continue
                         io = MyIO(inp)
                         vm.input_fn = io.input_fn
                         vm.print_fn = io.print_fn
@@ -347,7 +363,11 @@ def xvm_debug():
                         #handle input ops 
                         if op.opcode == OpCode.INPUT_NUMBER:
                             print("Input for INPUT_NUMBER (one arg): ")
-                            inp = from_stdin_number()
+                            try:
+                                inp = from_stdin_number()
+                            except ValueError:
+                                print("Input must be a number!")
+                                continue
                             io = MyIO(inp)
                             vm.input_fn = io.input_fn
                             vm.print_fn = io.print_fn

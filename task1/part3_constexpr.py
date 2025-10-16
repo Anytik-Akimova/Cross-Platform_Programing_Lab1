@@ -136,8 +136,6 @@ def test_simple():
     assert result == 3+6 + 8+3, f"Res {result}"
     assert _m.counter == 1, _m.counter
 
-    print("test_simple passed")
-
 
 def test_larger():
     _m = ExecutionMarker()
@@ -163,8 +161,6 @@ def test_larger():
     assert res == 3, res
     assert _m.counter == 2, _m.counter
     
-    print("test_larger passed")
-
 
 def test_multi():
     _m = ExecutionMarker()
@@ -189,8 +185,6 @@ def test_multi():
     assert out == 1, out
     assert _m.counter == 1, _m.counter
 
-    print("test_multi passed")
-
 
 # Extra points.
 def test_advanced():
@@ -211,9 +205,3 @@ def test_advanced():
     assert res == 2, res
     assert _m.counter == 1, _m.counter
 
-    print("test_advanced passed")
-
-test_simple()
-test_larger()
-test_multi()
-test_advanced()

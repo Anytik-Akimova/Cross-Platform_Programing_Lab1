@@ -184,8 +184,6 @@ def xvm_debug():
             except StopIteration:
                 print(f"Stopped at instruction {vm.ip} (BREAKPOINT)")
                 vm.ip += 1 
-            except IndexError:
-                print("End of program reached.")
             except Exception:
                 #check if the error came from VM
                 e_type, e_value, e_traceback = sys.exc_info()
@@ -198,6 +196,9 @@ def xvm_debug():
                     fl = 1
                 else:
                     print(f"Debugger error: {e_value}")
+
+            if vm.ip >= len(code[vm.current_frame]['instructions']):
+                print("End of program reached.")
             continue
         
         #step        
@@ -256,6 +257,8 @@ def xvm_debug():
                 else:
                     vm.ip += 1
 
+            if vm.ip >= len(code[vm.current_frame]['instructions']):
+                print("End of program reached.")        
             continue
 
         #next
@@ -316,6 +319,8 @@ def xvm_debug():
                     else:
                         vm.ip += 1
 
+                    if vm.ip >= len(code[vm.current_frame]['instructions']):
+                        print("End of program reached.")
                     continue
 
             #if call, step over
@@ -384,6 +389,9 @@ def xvm_debug():
                         fl = 1
                     else:
                         print(f"Debugger error: {e_value}")
+
+                if vm.ip >= len(code[vm.current_frame]['instructions']):
+                    print("End of program reached.")
                 continue
 
         #list    

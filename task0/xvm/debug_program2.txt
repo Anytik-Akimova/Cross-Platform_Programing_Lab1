@@ -4,6 +4,10 @@ STORE_VAR "x"
 STORE_VAR "n"
 
 LOAD_CONST 0
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3df4b63f0a063be707071c4d69df74f87213000b
 LOAD_VAR "n"
 EQ
 CJMP "Power 0"

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xvm"
-version = "2025.0.3"
+version = "0.0.0"
 authors = [
   {name = "Hatina Valeriia", email = "gatina.valeria@lll.kpi.ua"},
   {name = "Anna Akimova", email = "akimova.anna@lll.kpi.ua"},

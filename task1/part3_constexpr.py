@@ -8,24 +8,26 @@ import textwrap
 # YOUR CODE BELOW
 #############################################
 
-#helper functions
-def is_const_expr(n):
+#helper func: check if node is const expr
+def is_const_expr(node):
     #check if simply constants
-    if isinstance(n, ast.Constant):
+    if isinstance(node, ast.Constant):
         return True
     #check if its actually an unary op
-    if isinstance(n, ast.UnaryOp) and isinstance(n.op, (ast.UAdd, ast.USub)) and isinstance(n.operand, ast.Constant):
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)) and is_const_expr(node.operand):
+        return True
+    if isinstance(node, ast.BinOp) and is_const_expr(node.left) and is_const_expr(node.right):
         return True
     return False
 
-def eval_const_expr(n):
-    expr = ast.Expression(body=n)
+#helper func: evaluate const expr as a separate tree
+def eval_const_expr(node):
+    expr = ast.Expression(body=node)
     ast.fix_missing_locations(expr)
     return eval(compile(expr, "<const-expr>", "eval"), {}, {})
 
 # Implement `constexpr` and `eval_const_exprs`
 def constexpr(func):
-    # keep your wrapper and the marker
     def modified_function(*args, **kwargs):
         return func(*args, **kwargs)
     modified_function.is_marked_constexpr = True
@@ -35,65 +37,59 @@ def constexpr(func):
 def eval_const_exprs(func):
     original = inspect.unwrap(func)
 
+    #create the ast
     source = inspect.getsource(original)
     source = textwrap.dedent(source)
     tree = ast.parse(source)
 
-    # ---- build env for folding (globals + closure) ----
+    #create 'environment' (with closure and globals)
+    #to access other functions
     cv = inspect.getclosurevars(original)
     env = dict(func.__globals__)
     env.update(cv.globals)
     env.update(cv.nonlocals)
 
-    # ---- find exactly the function we’re transforming and strip its decorators ----
-    target_fn = None
-    for node in tree.body:
+    #find the target function and remove its decorators
+    for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef) and node.name == func.__name__:
-            node.decorator_list = []             # prevent recursive @eval_const_exprs
             target_fn = node
+            target_fn.decorator_list = []
             break
 
-    if target_fn is None:
-        # Fallback if getsource returned only the function (common case)
-        for n in ast.walk(tree):
-            if isinstance(n, ast.FunctionDef) and n.name == func.__name__:
-                target_fn = n
-                target_fn.decorator_list = []
-                break
-
-    # ---- fold constexpr calls using your existing logic ----
-    # --- fold constexpr calls (multi-pass to catch nesting like f(g(...), 3)) ---
+    #flag for multiple passes (nested functional expressions)
     changed = True
+
+    #iterate
     while changed:
         changed = False
-        for node in ast.walk(target_fn):  # target_fn is the function node you compiled
+        for node in ast.walk(target_fn): 
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
                 func_name = node.func.id
                 func_obj = env.get(func_name)
+                #if not found in env
                 if not func_obj:
                     continue
                 if getattr(func_obj, "is_marked_constexpr", False):
-                    # use your constant check; below supports UnaryOp like -3
                     if all(is_const_expr(arg) for arg in node.args):
                         values = [eval_const_expr(arg) for arg in node.args]
                         result = func_obj(*values)
                         node.__class__ = ast.Constant
                         node.value = result
+                        #remove unneeded attributes of modified node
                         for attr in ('func', 'args', 'keywords'):
                             if hasattr(node, attr):
                                 delattr(node, attr)
-                        changed = True  # <-- triggers another pass
+                        changed = True  
 
-
+    #fix after manual modifications
     ast.fix_missing_locations(target_fn)
 
-    # ---- compile ONLY the single function we just transformed ----
-    mini_mod = ast.Module(body=[target_fn], type_ignores=[])
-    ast.fix_missing_locations(mini_mod)
+    #compile function as a module
+    func_module = ast.Module(body=[target_fn], type_ignores=[])
+    ast.fix_missing_locations(func_module)
 
-    code = compile(mini_mod, " ", "exec")
+    code = compile(func_module, " ", "exec")
 
-    # Use globals + closure as the runtime globals of the recompiled function
     namespace = dict(func.__globals__)
     namespace.update(cv.globals)
     namespace.update(cv.nonlocals)
@@ -140,8 +136,6 @@ def test_simple():
     assert result == 3+6 + 8+3, f"Res {result}"
     assert _m.counter == 1, _m.counter
 
-    print("test_simple passed")
-
 
 def test_larger():
     _m = ExecutionMarker()
@@ -167,8 +161,6 @@ def test_larger():
     assert res == 3, res
     assert _m.counter == 2, _m.counter
     
-    print("test_larger passed")
-
 
 def test_multi():
     _m = ExecutionMarker()
@@ -193,8 +185,6 @@ def test_multi():
     assert out == 1, out
     assert _m.counter == 1, _m.counter
 
-    print("test_multi passed")
-
 
 # Extra points.
 def test_advanced():
@@ -215,9 +205,3 @@ def test_advanced():
     assert res == 2, res
     assert _m.counter == 1, _m.counter
 
-    print("test_advanced passed")
-
-test_simple()
-test_larger()
-test_multi()
-#test_advanced()

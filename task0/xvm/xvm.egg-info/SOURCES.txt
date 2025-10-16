@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+xvm.egg-info/PKG-INFO
+xvm.egg-info/SOURCES.txt
+xvm.egg-info/dependency_links.txt
+xvm.egg-info/entry_points.txt
+xvm.egg-info/top_level.txt

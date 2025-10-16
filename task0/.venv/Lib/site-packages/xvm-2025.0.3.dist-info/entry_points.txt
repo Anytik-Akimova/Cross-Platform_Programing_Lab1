@@ -1,0 +1,2 @@
+[console_scripts]
+xvm_py = xvm.run:xvm_debug

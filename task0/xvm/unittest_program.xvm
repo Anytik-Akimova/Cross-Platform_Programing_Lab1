@@ -1,0 +1,11 @@
+
+function "$entrypoint$"
+LOAD_CONST 10
+STORE_VAR "a"
+LOAD_CONST 20
+STORE_VAR "b"
+BREAKPOINT
+LOAD_VAR "a"
+LOAD_VAR "b"
+ADD
+STORE_VAR "c"
